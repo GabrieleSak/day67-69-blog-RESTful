@@ -1,4 +1,5 @@
 import datetime
+from urllib import request
 
 from flask import Flask, render_template, redirect, url_for, request
 from flask_bootstrap import Bootstrap5
@@ -70,9 +71,25 @@ def contact():
     return render_template("contact.html")
 
 
-@app.route("/edit")
-def edit_post():
-    pass
+@app.route("/edit_post/<int:post_id>", methods=["GET", "POST"])
+def edit_post(post_id):
+    post_to_edit = BlogPost.query.get(post_id)
+    edit_form = CreatePostForm(
+        title=post_to_edit.title,
+        subtitle=post_to_edit.subtitle,
+        img_url=post_to_edit.img_url,
+        author=post_to_edit.author,
+        body=post_to_edit.body
+    )
+    if edit_form.validate_on_submit():
+        post_to_edit.title = edit_form.title.data
+        post_to_edit.subtitle = edit_form.subtitle.data
+        post_to_edit.img_url = edit_form.img_url.data
+        post_to_edit.author = edit_form.author.data
+        post_to_edit.body = edit_form.body.data
+        db.session.commit()
+        return redirect(url_for("show_post", index=post_to_edit.id))
+    return render_template("make-post.html", form=edit_form, heading="Edit Post")
 
 
 @app.route("/new-post", methods=["GET", "POST"])
@@ -90,7 +107,7 @@ def new_post():
         db.session.add(new_blogpost)
         db.session.commit()
         return redirect(url_for("get_all_posts"))
-    return render_template("make-post.html", form=form)
+    return render_template("make-post.html", form=form, heading="New Post")
 
 
 if __name__ == "__main__":
