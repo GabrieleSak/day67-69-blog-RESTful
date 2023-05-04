@@ -1,4 +1,5 @@
-{% extends 'bootstrap/base.html' %}
+{% extends 'base.html' %}
+{% from 'bootstrap5/form.html' import render_form, render_field %}
 
 {% block content %}
 {% include "header.html" %}
@@ -20,9 +21,10 @@
   <div class="container">
     <div class="row">
       <div class="col-lg-8 col-md-10 mx-auto">
-        
-          <!-- This is where the form will go -->
-
+          {{ render_form(form, button_map={"submit": "btn-primary"})}}
+        <!-- This is where the form will go -->
+          {{ ckeditor.load() }}
+          {{ ckeditor.config(name='body') }}
       </div>
     </div>
   </div>
