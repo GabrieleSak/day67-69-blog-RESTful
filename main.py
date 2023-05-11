@@ -4,8 +4,10 @@ from urllib import request
 from flask import Flask, render_template, redirect, url_for, request
 from flask_bootstrap import Bootstrap5
 from flask_sqlalchemy import SQLAlchemy
-
+from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 from flask_ckeditor import CKEditor
+from werkzeug.security import generate_password_hash
+
 from forms import CreatePostForm, RegisterForm
 
 ## Delete this code:
@@ -39,12 +41,12 @@ class BlogPost(db.Model):
     img_url = db.Column(db.String(250), nullable=False)
 
 
-class User(db.Model):
+class User(UserMixin, db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(250), unique=True, nullable=False)
-    password = db.Column(db.String(250), unique=True, nullable=False)
-    name = db.Column(db.String(250), unique=True, nullable=False)
+    email = db.Column(db.String(250), unique=True)
+    password = db.Column(db.String(250))
+    name = db.Column(db.String(250))
 
 with app.app_context():
     db.create_all()
@@ -60,9 +62,16 @@ def get_all_posts():
 def register():
     form = RegisterForm()
     if form.validate_on_submit():
+
+        hash_and_salted_password = generate_password_hash(
+            form.password.data,
+            method='pbkdf2:sha256',
+            salt_length=8
+        )
+
         new_user = User(
             email=request.form.get("email"),
-            password=request.form.get("password"),
+            password=hash_and_salted_password,
             name=request.form.get("name")
         )
         db.session.add(new_user)
