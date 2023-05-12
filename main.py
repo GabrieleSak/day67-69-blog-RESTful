@@ -1,7 +1,7 @@
 import datetime
 from urllib import request
-
-from flask import Flask, render_template, redirect, url_for, request, flash
+from functools import wraps
+from flask import Flask, render_template, redirect, url_for, request, flash, abort
 from flask_bootstrap import Bootstrap5
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
@@ -60,10 +60,24 @@ with app.app_context():
     db.session.commit()
 
 
+
+def admin_only(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.id != 1 or not current_user.is_authenticated:
+            return abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 @app.route('/')
 def get_all_posts():
     posts = db.session.query(BlogPost).all()
-    return render_template("index.html", all_posts=posts, logged_in=current_user.is_authenticated)
+    try:
+        user_id = current_user.id
+    except AttributeError:
+        user_id = None
+    return render_template("index.html", all_posts=posts, logged_in=current_user.is_authenticated, user_id=user_id)
 
 
 @app.route('/register', methods=["GET", "POST"])
@@ -121,7 +135,11 @@ def logout():
 @app.route("/post/<int:index>")
 def show_post(index):
     requested_post = db.session.query(BlogPost).get(index)
-    return render_template("post.html", post=requested_post, logged_in=current_user.is_authenticated)
+    try:
+        user_id = current_user.id
+    except AttributeError:
+        user_id = None
+    return render_template("post.html", post=requested_post, logged_in=current_user.is_authenticated, user_id=user_id)
 
 
 @app.route("/about")
@@ -135,6 +153,7 @@ def contact():
 
 
 @app.route("/edit_post/<int:post_id>", methods=["GET", "POST"])
+@admin_only
 def edit_post(post_id):
     post_to_edit = BlogPost.query.get(post_id)
     edit_form = CreatePostForm(
@@ -152,10 +171,12 @@ def edit_post(post_id):
         post_to_edit.body = edit_form.body.data
         db.session.commit()
         return redirect(url_for("show_post", index=post_to_edit.id))
-    return render_template("make-post.html", form=edit_form, heading="Edit Post", logged_in=current_user.is_authenticated)
+    return render_template("make-post.html", form=edit_form, heading="Edit Post",
+                           logged_in=current_user.is_authenticated)
 
 
 @app.route("/new-post", methods=["GET", "POST"])
+@admin_only
 def new_post():
     form = CreatePostForm()
     if form.validate_on_submit():
@@ -170,15 +191,17 @@ def new_post():
         db.session.add(new_blogpost)
         db.session.commit()
         return redirect(url_for("get_all_posts"))
+
     return render_template("make-post.html", form=form, heading="New Post", logged_in=current_user.is_authenticated)
 
 
 @app.route("/delete/<int:post_id>")
+@admin_only
 def delete_post(post_id):
     post_to_delete = BlogPost.query.get(post_id)
     db.session.delete(post_to_delete)
     db.session.commit()
-    return redirect(url_for("get_all_posts"), logged_in=current_user.is_authenticated)
+    return redirect(url_for("get_all_posts"))
 
 
 if __name__ == "__main__":
