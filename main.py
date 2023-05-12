@@ -6,6 +6,7 @@ from flask_bootstrap import Bootstrap5
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 from flask_ckeditor import CKEditor
+from sqlalchemy.orm import relationship
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from forms import CreatePostForm, RegisterForm, LoginForm
@@ -39,11 +40,12 @@ def load_user(user_id):
 class BlogPost(db.Model):
     __tablename__ = "blog_posts"
     id = db.Column(db.Integer, primary_key=True)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    author = relationship("User", back_populates="posts")
     title = db.Column(db.String(250), unique=True, nullable=False)
     subtitle = db.Column(db.String(250), nullable=False)
     date = db.Column(db.String(250), nullable=False)
     body = db.Column(db.Text, nullable=False)
-    author = db.Column(db.String(250), nullable=False)
     img_url = db.Column(db.String(250), nullable=False)
 
 
@@ -53,6 +55,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(250), unique=True)
     password = db.Column(db.String(250))
     name = db.Column(db.String(250))
+    posts = relationship("BlogPost", back_populates="author")
 
 
 with app.app_context():
@@ -184,10 +187,11 @@ def new_post():
             title=request.form.get("title"),
             subtitle=request.form.get("subtitle"),
             date=datetime.datetime.now().strftime("%B %d, %Y"),
-            author=request.form.get("author"),
+            author=User(name=current_user.name),
             img_url=request.form.get("img_url"),
             body=request.form.get("body")
         )
+
         db.session.add(new_blogpost)
         db.session.commit()
         return redirect(url_for("get_all_posts"))
